@@ -22,6 +22,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractList;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -29,6 +30,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -99,14 +101,19 @@ public class GenericData {
   /** Return the class loader that's used (by subclasses). */
   public ClassLoader getClassLoader() { return classLoader; }
 
-  private Map<String, Conversion<?>> conversions =
+  private Map<String, List<Conversion<?>>> conversions =
       new HashMap<>();
 
   private Map<Class<?>, Map<String, Conversion<?>>> conversionsByClass =
       new IdentityHashMap<>();
 
   public Collection<Conversion<?>> getConversions() {
-    return conversions.values();
+    return conversions.values()
+      .stream()
+      .reduce(new LinkedList<>(), (c1, c2) -> {
+        c1.addAll(c2);
+        return c1;
+      });
   }
 
   /**
@@ -116,7 +123,13 @@ public class GenericData {
    * @param conversion a logical type Conversion.
    */
   public void addLogicalTypeConversion(Conversion<?> conversion) {
-    conversions.put(conversion.getLogicalTypeName(), conversion);
+    List<Conversion<?>> conversionsFor = conversions.get(conversion.getLogicalTypeName());
+    if (conversionsFor == null) {
+      conversionsFor = new ArrayList<>();
+      conversions.put(conversion.getLogicalTypeName(), conversionsFor);
+    }
+    // TODO: rethink, add to poistion 0, so that one can override the conversion, used in custom conversions
+    conversionsFor.add(0, conversion);
     Class<?> type = conversion.getConvertedType();
     if (conversionsByClass.containsKey(type)) {
       conversionsByClass.get(type).put(
@@ -171,7 +184,15 @@ public class GenericData {
     if (logicalType == null) {
       return null;
     }
-    return (Conversion<Object>) conversions.get(logicalType.getName());
+    List<Conversion<?>> conversions = this.conversions.get(logicalType.getName());
+    if (conversions != null) {
+      for (Conversion<?> conversion : conversions) {
+        if (conversion.supportsLogicalTypeWithParams(logicalType)) {
+          return (Conversion<Object>) conversion;
+        }
+      }
+    }
+    return null;
   }
 
   /** Default implementation of {@link GenericRecord}. Note that this implementation

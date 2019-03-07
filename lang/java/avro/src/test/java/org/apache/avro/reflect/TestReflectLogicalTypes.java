@@ -21,9 +21,12 @@ package org.apache.avro.reflect;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 
 import org.apache.avro.*;
+import org.apache.avro.data.Jsr310TimeConversions;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.file.FileReader;
@@ -52,6 +55,8 @@ public class TestReflectLogicalTypes {
   public static void addUUID() {
     REFLECT.addLogicalTypeConversion(new Conversions.UUIDConversion());
     REFLECT.addLogicalTypeConversion(new Conversions.DecimalConversion());
+    REFLECT.addLogicalTypeConversion(new Jsr310TimeConversions.TimestampInstantConversion());
+    REFLECT.addLogicalTypeConversion(new Jsr310TimeConversions.TimestampLocalDateTimeConversion());
   }
 
   @Test
@@ -68,6 +73,30 @@ public class TestReflectLogicalTypes {
     Schema actual = REFLECT.getSchema(RecordWithUUIDList.class);
 
     Assert.assertEquals("Should use the UUID logical type", expected, actual);
+  }
+
+  @Test
+  public void testReflectedSchemaLocalDateTime() {
+    Schema actual = REFLECT.getSchema(RecordWithTimestamps.class);
+
+    Assert.assertEquals("Should have the correct record name",
+      "org.apache.avro.reflect",
+      actual.getNamespace());
+    Assert.assertEquals("Should have the correct record name",
+      "RecordWithTimestamps",
+      actual.getName());
+    Assert.assertEquals("Should have the correct physical type",
+      Schema.Type.LONG,
+      actual.getField("localDateTime").schema().getType());
+    Assert.assertEquals("Should have the correct physical type",
+      Schema.Type.LONG,
+      actual.getField("instant").schema().getType());
+    Assert.assertEquals("Should have the correct logical type",
+      LogicalTypes.timestamp("micros", false),
+      LogicalTypes.fromSchema(actual.getField("localDateTime").schema()));
+    Assert.assertEquals("Should have the correct logical type",
+      LogicalTypes.timestamp("micros", true),
+      LogicalTypes.fromSchema(actual.getField("instant").schema()));
   }
 
   // this can be static because the schema only comes from reflection
@@ -757,6 +786,28 @@ class RecordWithStringUUID {
     }
     RecordWithStringUUID that = (RecordWithStringUUID) obj;
     return this.uuid.equals(that.uuid);
+  }
+}
+
+class RecordWithTimestamps {
+  LocalDateTime localDateTime;
+  Instant instant;
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(localDateTime, instant);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) {
+      return false;
+    }
+    if (!(obj instanceof RecordWithTimestamps)) {
+      return false;
+    }
+    RecordWithTimestamps that = (RecordWithTimestamps) obj;
+    return Objects.equals(this.localDateTime, that.instant);
   }
 }
 

@@ -242,6 +242,7 @@ TOKEN :
 | < TIME: "time_ms" >
 | < TIMESTAMP: "timestamp_ms" >
 | < DECIMAL: "decimal" >
+| < TIMESTAMP_WITH_PARAMS: "timestamp_type" >
 }
 
 /* LITERALS */
@@ -1498,6 +1499,19 @@ Schema PrimitiveType():
 | "time_ms" { return LogicalTypes.timeMillis().addToSchema(Schema.create(Type.INT)); }
 | "timestamp_ms" { return LogicalTypes.timestampMillis().addToSchema(Schema.create(Type.LONG)); }
 | "decimal" { return DecimalTypeProperties(); }
+| "timestamp_type" { return TimestampTypeProperties(); }
+}
+
+Schema TimestampTypeProperties():
+{
+  String precision;
+  boolean isUtcAdjusted;
+}
+{
+  "(" {precision = Json().textValue();} "," {isUtcAdjusted = Json().asBoolean();} ")"
+  {
+    return LogicalTypes.timestamp(precision, isUtcAdjusted).addToSchema(Schema.create(Type.LONG));
+  }
 }
 
 Schema DecimalTypeProperties():
@@ -1508,7 +1522,7 @@ Schema DecimalTypeProperties():
 {
   "(" {precision = Json().asInt();} "," {scale = Json().asInt();} ")"
   {
-    return LogicalTypes.decimal(precision, scale).addToSchema(Schema.create(Type.BYTES)); 
+    return LogicalTypes.decimal(precision, scale).addToSchema(Schema.create(Type.BYTES));
   }
 }
 

@@ -105,6 +105,8 @@ public class SpecificCompiler {
         specificData.addLogicalTypeConversion(new Jsr310TimeConversions.DateConversion());
         specificData.addLogicalTypeConversion(new Jsr310TimeConversions.TimeMillisConversion());
         specificData.addLogicalTypeConversion(new Jsr310TimeConversions.TimestampMillisConversion());
+        specificData.addLogicalTypeConversion(new Jsr310TimeConversions.TimestampInstantConversion());
+        specificData.addLogicalTypeConversion(new Jsr310TimeConversions.TimestampLocalDateTimeConversion());
       }
     };
 

@@ -728,6 +728,34 @@ public class TestSpecificCompiler {
   }
 
   @Test
+  public void testGetUsedConversionClassesForTimestampLogicalTypes() throws Exception {
+    SpecificCompiler compiler = createCompiler(JSR310);
+
+    Schema millisLocalDateTime = LogicalTypes.timestamp("millis", false)
+      .addToSchema(Schema.create(Schema.Type.LONG));
+    Schema millisInstant = LogicalTypes.timestamp("millis", true)
+      .addToSchema(Schema.create(Schema.Type.LONG));
+    Schema microsLocalDateTime = LogicalTypes.timestamp("micros", false)
+      .addToSchema(Schema.create(Schema.Type.LONG));
+    Schema microsInstant = LogicalTypes.timestamp("micros", true)
+      .addToSchema(Schema.create(Schema.Type.LONG));
+
+    verifyUsedLogicalType(compiler.getUsedConversionClasses(millisLocalDateTime),
+      "org.apache.avro.data.Jsr310TimeConversions.TimestampLocalDateTimeConversion");
+    verifyUsedLogicalType(compiler.getUsedConversionClasses(millisInstant),
+      "org.apache.avro.data.Jsr310TimeConversions.TimestampInstantConversion");
+    verifyUsedLogicalType(compiler.getUsedConversionClasses(microsLocalDateTime),
+      "org.apache.avro.data.Jsr310TimeConversions.TimestampLocalDateTimeConversion");
+    verifyUsedLogicalType(compiler.getUsedConversionClasses(microsInstant),
+      "org.apache.avro.data.Jsr310TimeConversions.TimestampInstantConversion");
+  }
+
+  private void verifyUsedLogicalType(Collection<String> usedConversionClasses, String logicalType) {
+    Assert.assertEquals(1, usedConversionClasses.size());
+    Assert.assertEquals(logicalType, usedConversionClasses.iterator().next());
+  }
+
+  @Test
   public void testPojoWithOptionalCreatedWhenOptionTurnedOn() throws IOException {
     SpecificCompiler compiler = createCompiler();
     compiler.setGettersReturnOptional(true);

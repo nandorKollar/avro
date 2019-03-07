@@ -1,0 +1,20 @@
+{
+  "namespace": "org.apache.avro.codegentest.testdata",
+  "type": "record",
+  "name": "TimestampTypes",
+  "doc": "Test timestamp types",
+  "fields": [
+    {
+      "name": "timestampNonUtcMillis",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp",
+        "precision": "millis",
+        "isUtcAdjusted": false
+      }
+    }
+  ]
+}
+
+
+

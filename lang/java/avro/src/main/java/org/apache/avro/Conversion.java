@@ -61,6 +61,10 @@ public abstract class Conversion<T> {
    */
   public abstract String getLogicalTypeName();
 
+  public boolean supportsLogicalTypeWithParams(LogicalType logicalType) {
+    return true;
+  }
+
   public Schema getRecommendedSchema() {
     throw new UnsupportedOperationException(
         "No recommended schema for " + getLogicalTypeName());

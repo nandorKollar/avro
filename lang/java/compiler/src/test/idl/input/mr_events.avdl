@@ -66,6 +66,8 @@ protocol Events {
     string jobName;
     string userName;
     timestamp_ms submitTime;
+    timestamp_type("millis",true) submitTime2;
+    timestamp_type("micros",false) submitTime3;
     string jobConfPath;
   }
 

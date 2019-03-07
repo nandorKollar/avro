@@ -25,7 +25,9 @@ import org.apache.avro.Schema;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.concurrent.TimeUnit;
 
 public class Jsr310TimeConversions {
@@ -179,6 +181,117 @@ public class Jsr310TimeConversions {
     @Override
     public Schema getRecommendedSchema() {
       return LogicalTypes.timestampMicros().addToSchema(Schema.create(Schema.Type.LONG));
+    }
+  }
+
+  public static class TimestampLocalDateTimeConversion extends Conversion<LocalDateTime> {
+    @Override
+    public boolean supportsLogicalTypeWithParams(LogicalType logicalType) {
+      if (!(logicalType instanceof LogicalTypes.Timestamp)) {
+        return false;
+      }
+      LogicalTypes.Timestamp timestamp = (LogicalTypes.Timestamp) logicalType;
+      return !timestamp.isUtcAdjusted();
+    }
+
+    @Override
+    public Class<LocalDateTime> getConvertedType() {
+      return LocalDateTime.class;
+    }
+
+    @Override
+    public String getLogicalTypeName() {
+      return "timestamp";
+    }
+
+    @Override
+    public LocalDateTime fromLong(Long microsFromEpoch, Schema schema, LogicalType type) {
+      LogicalTypes.Timestamp timestamp = (LogicalTypes.Timestamp) type;
+      if ("millis".equals(timestamp.getPrecision())) {
+        Instant instant = new Jsr310TimeConversions.TimestampMillisConversion().fromLong(microsFromEpoch, schema, type);
+        return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+      }
+
+      if ("micros".equals(timestamp.getPrecision())) {
+        Instant instant = new Jsr310TimeConversions.TimestampMicrosConversion().fromLong(microsFromEpoch, schema, type);
+        return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+      }
+
+      throw new RuntimeException("Unknown precision");
+    }
+
+    @Override
+    public Long toLong(LocalDateTime localDateTime, Schema schema, LogicalType type) {
+      LogicalTypes.Timestamp timestamp = (LogicalTypes.Timestamp) type;
+      Instant instant = localDateTime.toInstant(ZoneOffset.UTC);
+      if ("millis".equals(timestamp.getPrecision())) {
+        return new Jsr310TimeConversions.TimestampMillisConversion().toLong(instant, schema, type);
+      }
+
+      if ("micros".equals(timestamp.getPrecision())) {
+        return new Jsr310TimeConversions.TimestampMicrosConversion().toLong(instant, schema, type);
+      }
+
+      throw new RuntimeException("Unknown precision");
+    }
+
+    @Override
+    public Schema getRecommendedSchema() {
+      return LogicalTypes.timestamp("micros", false).addToSchema(Schema.create(Schema.Type.LONG));
+    }
+  }
+
+  public static class TimestampInstantConversion extends Conversion<Instant> {
+    @Override
+    public boolean supportsLogicalTypeWithParams(LogicalType logicalType) {
+      if (!(logicalType instanceof LogicalTypes.Timestamp)) {
+        return false;
+      }
+      LogicalTypes.Timestamp timestamp = (LogicalTypes.Timestamp) logicalType;
+      return timestamp.isUtcAdjusted();
+    }
+
+    @Override
+    public Class<Instant> getConvertedType() {
+      return Instant.class;
+    }
+
+    @Override
+    public String getLogicalTypeName() {
+      return "timestamp";
+    }
+
+    @Override
+    public Instant fromLong(Long microsFromEpoch, Schema schema, LogicalType type) {
+      LogicalTypes.Timestamp timestamp = (LogicalTypes.Timestamp) type;
+      if ("millis".equals(timestamp.getPrecision())) {
+        return new Jsr310TimeConversions.TimestampMillisConversion().fromLong(microsFromEpoch, schema, type);
+      }
+
+      if ("micros".equals(timestamp.getPrecision())) {
+        return new Jsr310TimeConversions.TimestampMicrosConversion().fromLong(microsFromEpoch, schema, type);
+      }
+
+      throw new RuntimeException("Unknown precision");
+    }
+
+    @Override
+    public Long toLong(Instant instant, Schema schema, LogicalType type) {
+      LogicalTypes.Timestamp timestamp = (LogicalTypes.Timestamp) type;
+      if ("millis".equals(timestamp.getPrecision())) {
+        return new Jsr310TimeConversions.TimestampMillisConversion().toLong(instant, schema, type);
+      }
+
+      if ("micros".equals(timestamp.getPrecision())) {
+        return new Jsr310TimeConversions.TimestampMicrosConversion().toLong(instant, schema, type);
+      }
+
+      throw new RuntimeException("Unknown precision");
+    }
+
+    @Override
+    public Schema getRecommendedSchema() {
+      return LogicalTypes.timestamp("micros", true).addToSchema(Schema.create(Schema.Type.LONG));
     }
   }
 }

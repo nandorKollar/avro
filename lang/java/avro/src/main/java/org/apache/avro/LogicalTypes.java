@@ -88,6 +88,9 @@ public class LogicalTypes {
       case TIME_MICROS:
         logicalType = TIME_MICROS_TYPE;
         break;
+      case TIMESTAMP:
+        logicalType = new Timestamp(schema);
+        break;
       default:
         final LogicalTypeFactory typeFactory = REGISTERED_TYPES.get(typeName);
         if (typeFactory != null) {
@@ -115,6 +118,7 @@ public class LogicalTypes {
     return logicalType;
   }
 
+  private static final String TIMESTAMP = "timestamp";
   private static final String DECIMAL = "decimal";
   private static final String UUID = "uuid";
   private static final String DATE = "date";
@@ -131,6 +135,10 @@ public class LogicalTypes {
   /** Create a Decimal LogicalType with the given precision and scale */
   public static Decimal decimal(int precision, int scale) {
     return new Decimal(precision, scale);
+  }
+
+  public static Timestamp timestamp(String precision, boolean isUtcAdjusted) {
+    return new Timestamp(precision, isUtcAdjusted);
   }
 
   private static final LogicalType UUID_TYPE = new LogicalType("uuid");
@@ -169,6 +177,104 @@ public class LogicalTypes {
 
   public static TimestampMicros timestampMicros() {
     return TIMESTAMP_MICROS_TYPE;
+  }
+
+  public static class Timestamp extends LogicalType {
+    private static final String PRECISION_PROP = "precision";
+    private static final String UTC_ADJUSTED_PROP = "isUtcAdjusted";
+
+    private final String precision;
+    private final boolean isUtcAdjusted;
+
+    private Timestamp(String precision, boolean isUtcAdjusted) {
+      super(TIMESTAMP);
+      this.precision = precision;
+      this.isUtcAdjusted = isUtcAdjusted;
+    }
+
+    private Timestamp(Schema schema) {
+      super(TIMESTAMP);
+      if (!hasProperty(schema, PRECISION_PROP)) {
+        throw new IllegalArgumentException(
+          "Invalid decimal: missing precision");
+      }
+
+      this.precision = getString(schema, PRECISION_PROP);
+
+      if (!hasProperty(schema, UTC_ADJUSTED_PROP)) {
+        throw new IllegalArgumentException(
+          "Invalid decimal: missing UTC adjusted");
+      }
+
+      this.isUtcAdjusted = getBoolean(schema, UTC_ADJUSTED_PROP);
+    }
+
+    @Override
+    public Schema addToSchema(Schema schema) {
+      super.addToSchema(schema);
+      schema.addProp(PRECISION_PROP, precision);
+      schema.addProp(UTC_ADJUSTED_PROP, isUtcAdjusted);
+      return schema;
+    }
+
+    public String getPrecision() {
+      return precision;
+    }
+
+    public boolean isUtcAdjusted() {
+      return isUtcAdjusted;
+    }
+
+    @Override
+    public void validate(Schema schema) {
+      super.validate(schema);
+      if (schema.getType() != Schema.Type.LONG) {
+        throw new IllegalArgumentException(
+          "Timestamp can only be used with an underlying long type");
+      }
+    }
+
+    private boolean hasProperty(Schema schema, String name) {
+      return (schema.getObjectProp(name) != null);
+    }
+
+    private boolean getBoolean(Schema schema, String name) {
+      Object obj = schema.getObjectProp(name);
+      if (obj instanceof Boolean) {
+        return (boolean) obj;
+      }
+      throw new IllegalArgumentException("Expected boolean " + name + ": " +
+        (obj == null ? "null" : obj + ":" + obj.getClass().getSimpleName()));
+    }
+
+    private String getString(Schema schema, String name) {
+      Object obj = schema.getObjectProp(name);
+      if (obj instanceof String) {
+        return (String) obj;
+      }
+      throw new IllegalArgumentException("Expected string " + name + ": " +
+        (obj == null ? "null" : obj + ":" + obj.getClass().getSimpleName()));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      Timestamp timestamp = (Timestamp) o;
+
+      if (precision != timestamp.precision) return false;
+      if (isUtcAdjusted != timestamp.isUtcAdjusted) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = precision.hashCode();
+      result = 31 * result + (isUtcAdjusted ? 0 : 1);
+      return result;
+    }
   }
 
   /** Decimal represents arbitrary-precision fixed-scale decimal numbers  */
