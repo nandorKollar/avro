@@ -37,11 +37,16 @@ public class TestProtoConversions {
   private static Schema TIMESTAMP_MICROS_SCHEMA;
 
   private static Calendar May_28_2015_21_46_53_221 = Calendar.getInstance();
+  private static Calendar May_28_1965_21_46_53_221 = Calendar.getInstance();
 
   static {
     May_28_2015_21_46_53_221.setTimeZone(TimeZone.getTimeZone("UTC"));
     May_28_2015_21_46_53_221.set(2015, Calendar.MAY, 28, 21, 46, 53);
     May_28_2015_21_46_53_221.set(Calendar.MILLISECOND, 221);
+
+    May_28_1965_21_46_53_221.setTimeZone(TimeZone.getTimeZone("UTC"));
+    May_28_1965_21_46_53_221.set(1965, Calendar.MAY, 28, 21, 46, 53);
+    May_28_1965_21_46_53_221.set(Calendar.MILLISECOND, 221);
   }
 
   @BeforeClass
@@ -50,6 +55,73 @@ public class TestProtoConversions {
         .addToSchema(Schema.create(Schema.Type.LONG));
     TestProtoConversions.TIMESTAMP_MICROS_SCHEMA = LogicalTypes.timestampMicros()
         .addToSchema(Schema.create(Schema.Type.LONG));
+  }
+
+  @Test
+  public void testTimestampMillisConversionBeforeUnixEpoch() throws Exception {
+    TimestampMillisConversion conversion = new TimestampMillisConversion();
+
+    long instant = May_28_1965_21_46_53_221.getTimeInMillis();
+    Timestamp May_28_1965_21_46_53_221_ts = Timestamp.newBuilder().setSeconds(-144987187L).setNanos(221000000).build();
+
+    Timestamp tsFromInstant = conversion.fromLong(instant, TIMESTAMP_MILLIS_SCHEMA, LogicalTypes.timestampMillis());
+    long roundTrip = conversion.toLong(tsFromInstant, TIMESTAMP_MILLIS_SCHEMA, LogicalTypes.timestampMillis());
+    Assert.assertEquals("Round-trip conversion should work", instant, roundTrip);
+
+    Assert.assertEquals("Known timestamp should be correct", May_28_1965_21_46_53_221_ts,
+        conversion.fromLong(instant, TIMESTAMP_MILLIS_SCHEMA, LogicalTypes.timestampMillis()));
+    Assert.assertEquals("Known timestamp should be correct", instant,
+        (long) conversion.toLong(May_28_1965_21_46_53_221_ts, TIMESTAMP_MILLIS_SCHEMA, LogicalTypes.timestampMillis()));
+  }
+
+  @Test
+  public void testTimestampMicrosConversionBeforeUnixEpoch() throws Exception {
+    TimestampMicrosConversion conversion = new TimestampMicrosConversion();
+
+    long instant = May_28_1965_21_46_53_221.getTimeInMillis() * 1000 + 843;
+    Timestamp May_28_1965_21_46_53_221_843_ts = Timestamp.newBuilder().setSeconds(-144987187L).setNanos(221843000)
+        .build();
+
+    Timestamp tsFromInstant = conversion.fromLong(instant, TIMESTAMP_MICROS_SCHEMA, LogicalTypes.timestampMicros());
+    long roundTrip = conversion.toLong(tsFromInstant, TIMESTAMP_MICROS_SCHEMA, LogicalTypes.timestampMicros());
+    Assert.assertEquals("Round-trip conversion should work", instant, roundTrip);
+
+    Assert.assertEquals("Known timestamp should be correct", May_28_1965_21_46_53_221_843_ts,
+        conversion.fromLong(instant, TIMESTAMP_MICROS_SCHEMA, LogicalTypes.timestampMicros()));
+    Assert.assertEquals("Known timestamp should be correct", instant, (long) conversion
+        .toLong(May_28_1965_21_46_53_221_843_ts, TIMESTAMP_MICROS_SCHEMA, LogicalTypes.timestampMicros()));
+  }
+
+  @Test
+  public void testTimestampMicrosConversionUnixEpoch() throws Exception {
+    TimestampMicrosConversion conversion = new TimestampMicrosConversion();
+
+    Timestamp May_28_1965_21_46_53_221_843_ts = Timestamp.newBuilder().setSeconds(0).setNanos(0).build();
+
+    Timestamp tsFromInstant = conversion.fromLong(0L, TIMESTAMP_MICROS_SCHEMA, LogicalTypes.timestampMicros());
+    long roundTrip = conversion.toLong(tsFromInstant, TIMESTAMP_MICROS_SCHEMA, LogicalTypes.timestampMicros());
+    Assert.assertEquals("Round-trip conversion should work", 0, roundTrip);
+
+    Assert.assertEquals("Known timestamp should be correct", May_28_1965_21_46_53_221_843_ts,
+        conversion.fromLong(0L, TIMESTAMP_MICROS_SCHEMA, LogicalTypes.timestampMicros()));
+    Assert.assertEquals("Known timestamp should be correct", 0L, (long) conversion
+        .toLong(May_28_1965_21_46_53_221_843_ts, TIMESTAMP_MICROS_SCHEMA, LogicalTypes.timestampMicros()));
+  }
+
+  @Test
+  public void testTimestampMillisConversionUnixEpoch() throws Exception {
+    TimestampMillisConversion conversion = new TimestampMillisConversion();
+
+    Timestamp May_28_2015_21_46_53_221_ts = Timestamp.newBuilder().setSeconds(0L).setNanos(0).build();
+
+    Timestamp tsFromInstant = conversion.fromLong(0L, TIMESTAMP_MILLIS_SCHEMA, LogicalTypes.timestampMillis());
+    long roundTrip = conversion.toLong(tsFromInstant, TIMESTAMP_MILLIS_SCHEMA, LogicalTypes.timestampMillis());
+    Assert.assertEquals("Round-trip conversion should work", 0, roundTrip);
+
+    Assert.assertEquals("Known timestamp should be correct", May_28_2015_21_46_53_221_ts,
+        conversion.fromLong(0L, TIMESTAMP_MILLIS_SCHEMA, LogicalTypes.timestampMillis()));
+    Assert.assertEquals("Known timestamp should be correct", 0,
+        (long) conversion.toLong(May_28_2015_21_46_53_221_ts, TIMESTAMP_MILLIS_SCHEMA, LogicalTypes.timestampMillis()));
   }
 
   @Test
@@ -102,13 +174,6 @@ public class TestProtoConversions {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testTimestampMillisConversionNanosLowerLimit() throws Exception {
-    TimestampMillisConversion conversion = new TimestampMillisConversion();
-    long exceeded = -1L;
-    conversion.fromLong(exceeded, TIMESTAMP_MILLIS_SCHEMA, LogicalTypes.timestampMillis());
-  }
-
-  @Test(expected = IllegalArgumentException.class)
   public void testTimestampMicrosConversionSecondsLowerLimit() throws Exception {
     TimestampMicrosConversion conversion = new TimestampMicrosConversion();
     long exceeded = (ProtoConversions.SECONDS_LOWERLIMIT - 1) * 1000000;
@@ -119,13 +184,6 @@ public class TestProtoConversions {
   public void testTimestampMicrosConversionSecondsUpperLimit() throws Exception {
     TimestampMicrosConversion conversion = new TimestampMicrosConversion();
     long exceeded = (ProtoConversions.SECONDS_UPPERLIMIT + 1) * 1000000;
-    conversion.fromLong(exceeded, TIMESTAMP_MICROS_SCHEMA, LogicalTypes.timestampMicros());
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testTimestampMicrosConversionNanosLowerLimit() throws Exception {
-    TimestampMicrosConversion conversion = new TimestampMicrosConversion();
-    long exceeded = -1L;
     conversion.fromLong(exceeded, TIMESTAMP_MICROS_SCHEMA, LogicalTypes.timestampMicros());
   }
 

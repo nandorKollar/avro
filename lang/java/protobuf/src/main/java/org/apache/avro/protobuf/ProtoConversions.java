@@ -23,6 +23,11 @@ import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 
+import java.time.Instant;
+
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 public class ProtoConversions {
 
   private static final int THOUSAND = 1000;
@@ -112,19 +117,19 @@ public class ProtoConversions {
   }
 
   private static Timestamp fromLong(Long epoch, TimestampPrecise precise) throws IllegalArgumentException {
-    long seconds = 0L;
-    int nanos = 0;
+    Instant instant = null;
 
     switch (precise) {
     case Millis:
-      seconds = epoch / THOUSAND;
-      nanos = (int) (epoch - seconds * THOUSAND) * MILLION;
+      instant = Instant.ofEpochMilli(epoch);
       break;
     case Micros:
-      seconds = epoch / MILLION;
-      nanos = (int) (epoch - seconds * MILLION) * THOUSAND;
+      instant = Instant.ofEpochSecond(MICROSECONDS.toSeconds(epoch), MICROSECONDS.toNanos(epoch % SECONDS.toMicros(1)));
       break;
     }
+
+    long seconds = instant.getEpochSecond();
+    int nanos = instant.getNano();
 
     if (seconds < SECONDS_LOWERLIMIT || seconds > SECONDS_UPPERLIMIT) {
       throw new IllegalArgumentException("given seconds is out of range");
